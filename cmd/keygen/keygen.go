@@ -15,6 +15,11 @@ var (
 )
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintln(flag.CommandLine.Output(), "Usage of keygen")
+		flag.PrintDefaults()
+	}
+
 	flag.Parse()
 
 	if len(*stringFlag) > 0 {
