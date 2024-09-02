@@ -43,7 +43,7 @@ func main() {
 		if *appendFlag {
 			flag = os.O_WRONLY | os.O_APPEND | os.O_CREATE
 		} else {
-			flag = os.O_WRONLY | os.O_CREATE
+			flag = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
 		}
 		var err error
 		writeTo, err = os.OpenFile(*outputFlag, flag, 0666)
@@ -92,6 +92,7 @@ func main() {
 				str := base64.StdEncoding.EncodeToString([]byte(arg))
 				fmt.Fprintf(writeTo, pattern, name, str)
 			}
+			i += 2
 		}
 	} else {
 		if len(*stringFlag) > 0 {
