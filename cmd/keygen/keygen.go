@@ -57,9 +57,9 @@ func main() {
 
 	var pattern string
 	if *exportFlag {
-		pattern = "export %s=%s\n"
+		pattern = "export %s=\"%s\"\n"
 	} else {
-		pattern = "%s=%s\n"
+		pattern = "%s=\"%s\"\n"
 	}
 
 	count := flag.NArg()
