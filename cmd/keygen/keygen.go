@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -12,12 +13,29 @@ import (
 )
 
 var (
-	bitFlag    = flag.Uint64("b", 32, "Number of bytes for the key")
-	stringFlag = flag.String("s", "", "Specify a string to be encoded")
-	exportFlag = flag.Bool("e", false, `add "export" to variable definition`)
-	outputFlag = flag.String("o", "", "Specify file to write keys")
-	appendFlag = flag.Bool("a", false, "Append to file")
+	fs         *flag.FlagSet = flag.NewFlagSet("keygen", flag.ExitOnError)
+	bitFlag                  = fs.Uint64("b", 32, "Number of bytes for the key")
+	stringFlag               = fs.String("s", "", "Specify a string to be encoded")
+	exportFlag               = fs.Bool("e", false, `add "export" to variable definition`)
+	outputFlag               = fs.String("o", "", "Specify file to write keys")
+	appendFlag               = fs.Bool("a", false, "Append to file")
 )
+
+func errCouldNotParseInt(arg string) error {
+	return fmt.Errorf("could not parse int %s", arg)
+}
+
+func errCouldNotOpenFile(arg string) error {
+	return fmt.Errorf("could not open file %s", arg)
+}
+
+func errCouldNotGenerate(arg uint64) error {
+	return fmt.Errorf("could not generate key of length %v bytes", arg)
+}
+
+func exit(err error) {
+	fmt.Fprintln(fs.Output(), err)
+}
 
 func isDigits(s string) bool {
 	for _, c := range s {
@@ -29,12 +47,12 @@ func isDigits(s string) bool {
 }
 
 func main() {
-	flag.Usage = func() {
-		fmt.Fprintln(flag.CommandLine.Output(), "Usage of keygen")
-		flag.PrintDefaults()
+	fs.Usage = func() {
+		fmt.Fprintf(fs.Output(), "Usage of %s\n", fs.Name())
+		fs.PrintDefaults()
 	}
 
-	flag.Parse()
+	fs.Parse(os.Args[1:])
 
 	var writeTo *os.File
 
@@ -48,7 +66,7 @@ func main() {
 		var err error
 		writeTo, err = os.OpenFile(*outputFlag, flag, 0666)
 		if err != nil {
-			os.Exit(-1)
+			exit(errors.Join(errCouldNotOpenFile(*outputFlag), err))
 		}
 		defer writeTo.Close()
 	} else {
@@ -57,12 +75,12 @@ func main() {
 
 	var pattern string
 	if *exportFlag {
-		pattern = "export %s=\"%s\"\n"
+		pattern = "export %s=%q\n"
 	} else {
-		pattern = "%s=\"%s\"\n"
+		pattern = "%s=%q\n"
 	}
 
-	count := flag.NArg()
+	count := fs.NArg()
 
 	if count >= 2 {
 		if count%2 != 0 {
@@ -72,18 +90,18 @@ func main() {
 		i := 0
 
 		for i < count {
-			name := flag.Arg(i)
-			arg := flag.Arg(i + 1)
+			name := fs.Arg(i)
+			arg := fs.Arg(i + 1)
 
 			if isDigits(arg) {
 				numarg, err := strconv.ParseUint(arg, 10, 64)
 				if err != nil {
-					os.Exit(-1)
+					exit(errors.Join(errCouldNotParseInt(arg), err))
 				}
 
 				rand, err := keygen.GenerateRand(numarg)
 				if err != nil {
-					os.Exit(-1)
+					exit(errors.Join(errCouldNotGenerate(numarg), err))
 				}
 
 				str := base64.StdEncoding.EncodeToString(rand)
@@ -102,7 +120,7 @@ func main() {
 
 		rand, err := keygen.GenerateRand(*bitFlag)
 		if err != nil {
-			os.Exit(-1)
+			exit(errors.Join(errCouldNotGenerate(*bitFlag), err))
 		}
 
 		fmt.Fprintln(writeTo, base64.StdEncoding.EncodeToString(rand))
