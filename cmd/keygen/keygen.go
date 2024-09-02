@@ -15,6 +15,8 @@ var (
 	bitFlag    = flag.Uint64("b", 32, "Number of bytes for the key")
 	stringFlag = flag.String("s", "", "Specify a string to be encoded")
 	exportFlag = flag.Bool("e", false, `add "export" to variable definition`)
+	outputFlag = flag.String("o", "", "Specify file to write keys")
+	appendFlag = flag.Bool("a", false, "Append to file")
 )
 
 func isDigits(s string) bool {
@@ -33,6 +35,25 @@ func main() {
 	}
 
 	flag.Parse()
+
+	var writeTo *os.File
+
+	if len(*outputFlag) > 0 {
+		var flag int
+		if *appendFlag {
+			flag = os.O_WRONLY | os.O_APPEND | os.O_CREATE
+		} else {
+			flag = os.O_WRONLY | os.O_CREATE
+		}
+		var err error
+		writeTo, err = os.OpenFile(*outputFlag, flag, 0666)
+		if err != nil {
+			os.Exit(-1)
+		}
+		defer writeTo.Close()
+	} else {
+		writeTo = os.Stdout
+	}
 
 	var pattern string
 	if *exportFlag {
@@ -66,15 +87,15 @@ func main() {
 				}
 
 				str := base64.StdEncoding.EncodeToString(rand)
-				fmt.Printf(pattern, name, str)
+				fmt.Fprintf(writeTo, pattern, name, str)
 			} else {
 				str := base64.StdEncoding.EncodeToString([]byte(arg))
-				fmt.Printf(pattern, name, str)
+				fmt.Fprintf(writeTo, pattern, name, str)
 			}
 		}
 	} else {
 		if len(*stringFlag) > 0 {
-			fmt.Println(base64.StdEncoding.EncodeToString([]byte(*stringFlag)))
+			fmt.Fprintln(writeTo, base64.StdEncoding.EncodeToString([]byte(*stringFlag)))
 			return
 		}
 
@@ -83,6 +104,6 @@ func main() {
 			os.Exit(-1)
 		}
 
-		fmt.Println(base64.StdEncoding.EncodeToString(rand))
+		fmt.Fprintln(writeTo, base64.StdEncoding.EncodeToString(rand))
 	}
 }
